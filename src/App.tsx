@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 
 type WindowType = {
   id: number
@@ -21,6 +21,8 @@ let nextId = 1
 
 export default function TilingWindowSystem() {
   const [windows, setWindows] = useState<WindowType[]>([])
+  const [draggingId, setDraggingId] = useState<number | null>(null)
+  const offset = useRef({x:0, y:0})
 
   const addWindow = () => {
     const { x, y } = getRandomPosition()
@@ -41,6 +43,46 @@ export default function TilingWindowSystem() {
     setWindows((prev) => prev.filter((w) => w.id !== id))
   }
 
+  const handleMouseDown = (
+    e: React.MouseEvent<HTMLDivElement, MouseEvent>,
+    win: WindowType
+  ) => {
+    e.stopPropagation()
+    setDraggingId(win.id)
+    offset.current = {
+      x: e.clientX - win.x,
+      y: e.clientY - win.y,
+    }
+  }
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (draggingId === null) return
+    setWindows((prev) => 
+    prev.map((w) =>
+      w.id === draggingId
+    ? {
+      ...w,
+      x: e.clientX - offset.current.x,
+      y: e.clientY - offset.current.y,
+    }
+    : w
+    ))
+  }
+
+  const handleMouseUp = () => {
+    setDraggingId(null)
+  }
+
+  useEffect(() => {
+    window.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mouseup", handleMouseUp)
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove)
+      window.removeEventListener("mouseup", handleMouseUp)
+    }
+  }, [draggingId])
+
   return (
     <div className="relative w-screen h-screen bg-gray-100 overflow-hidden">
       {windows.map((win) => (
@@ -55,7 +97,7 @@ export default function TilingWindowSystem() {
             backgroundColor: win.color,
           }}
         >
-          <div className="h-8 bg-black bg-opacity-20 flex justify-between items-center px-2 text-sm cursor-move">
+          <div className="h-8 bg-black bg-opacity-20 flex justify-between items-center px-2 text-sm cursor-move" onMouseDown={(e) => handleMouseDown(e, win)}>
             <span>Window</span>
             <button
               onClick={() => closeWindow(win.id)}
